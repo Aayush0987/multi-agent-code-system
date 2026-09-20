@@ -1,0 +1,8 @@
+.venv
+.env
+.git
+logs
+__pycache__
+.pytest_cache
+docs/traces
+ui_shots

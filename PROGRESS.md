@@ -107,6 +107,14 @@ after Phase 9.
 - [x] Lessons learned
 - Final full run: 24/26 passing; the 2 live e2e failures passed on immediate rerun (LLM non-determinism, noted in README).
 
+## After Phase 9 — fixes and web UI
+- [x] Coder now receives its previous code on revisions (`agents/coder.py`, carried across supervisor retries in `graph/supervisor.py`)
+- [x] Human checkpoint reports `steps_remaining`, accepts `extra_steps` on reject, and flags `rejection_unapplied`; CLI warns and offers extra steps
+- [x] Web UI: `api/` (FastAPI, background-thread sessions, access code, concurrency cap) + `web/` (static, no build). Live event streaming via a context-var listener in `graph/trace.py`
+- [x] Verified: 31 deterministic tests pass (8 of them API tests with mocked agents); real run through the HTTP API; real Chrome run via `scripts/ui_smoke.py` (run -> reject with feedback -> approve -> download), no console errors
+- [ ] Dockerfile written but not built (Docker not installed on the dev machine)
+- [ ] Not yet deployed to Vercel/backend host
+
 ## Git / GitHub
 - [x] Local git init
 - [x] Commits pushed in stages (scaffold, Phases 0-1, 2-3, 4-5), then Phases 7-9 together

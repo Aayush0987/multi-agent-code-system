@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Agent Code Studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #1b1f27; --muted: #5d6675; --line: #e2e5ea;
+  --accent: #3b5bdb; --accent-ink: #ffffff; --ok: #1f8a4c; --ok-bg: #e6f5ec;
+  --bad: #c2341f; --bad-bg: #fdeceb; --warn: #9a6700; --warn-bg: #fff4d6;
+  --code-bg: #f1f3f6; --shadow: 0 1px 2px rgba(20,24,32,.06), 0 4px 16px rgba(20,24,32,.04);
+  --planner: #5c6b8a; --coder: #2f6fed; --tester: #c77d00; --reviewer: #8a4fd6; --supervisor: #5d6675; --human: #1f8a4c; --system: #8b93a1;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1218; --panel: #171b23; --ink: #e8eaee; --muted: #9aa3b2; --line: #272d38;
+    --accent: #6f8cff; --accent-ink: #0b0e14; --ok: #4cc27f; --ok-bg: #12291d;
+    --bad: #ff7a66; --bad-bg: #2f1714; --warn: #f0b83f; --warn-bg: #2b2410;
+    --code-bg: #0c0f15; --shadow: none;
+    --planner: #93a1c2; --coder: #7ea4ff; --tester: #f0b03f; --reviewer: #b990f2; --supervisor: #9aa3b2; --human: #4cc27f; --system: #6c7482;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+.wrap { max-width: 920px; margin: 0 auto; padding: 24px 16px 64px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: 13px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+textarea, input[type=number], input[type=password] { width: 100%; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+textarea { min-height: 96px; resize: vertical; }
+textarea:focus, input:focus, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.row.end { justify-content: flex-end; }
+button { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 16px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--muted); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button.good { background: var(--ok); border-color: var(--ok); color: #fff; }
+button.danger { color: var(--bad); border-color: var(--bad); }
+.chip { font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 999px; background: var(--code-bg); color: var(--muted); border: 1px solid var(--line); cursor: pointer; }
+.hint { color: var(--muted); font-size: 13px; }
+label.small { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+label.small input { width: 60px; padding: 5px 8px; }
+.pipeline { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.node { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--muted); }
+.node .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--system); }
+.node.active { color: var(--ink); border-color: var(--accent); }
+.node.active .dot { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.6); opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .node.active .dot { animation: none; } }
+.status { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--code-bg); font-size: 14px; margin-bottom: 14px; }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.timeline { list-style: none; padding: 0; margin: 0; }
+.attempt { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.attempt:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+.ev { display: grid; grid-template-columns: 92px 1fr; gap: 10px; padding: 6px 0; align-items: start; }
+.who { font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; padding-top: 2px; }
+.who .dot { width: 8px; height: 8px; border-radius: 50%; }
+.msg { min-width: 0; overflow-wrap: anywhere; }
+.msg .tag { font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 6px; margin-right: 6px; }
+.tag.ok { background: var(--ok-bg); color: var(--ok); } .tag.bad { background: var(--bad-bg); color: var(--bad); } .tag.info { background: var(--code-bg); color: var(--muted); }
+.detail { color: var(--muted); font-size: 13px; margin-top: 2px; }
+details.d { margin-top: 4px; } details.d summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+pre { margin: 6px 0 0; padding: 12px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; overflow: auto; font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; max-height: 420px; }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.kv div { background: var(--code-bg); border-radius: 8px; padding: 8px 12px; } .kv b { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+.banner { padding: 10px 12px; border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
+.banner.warn { background: var(--warn-bg); color: var(--warn); } .banner.bad { background: var(--bad-bg); color: var(--bad); } .banner.ok { background: var(--ok-bg); color: var(--ok); }
+.hidden { display: none !important; }
+footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 28px; }
+@media (max-width: 560px) { .ev { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Multi-Agent Code Studio</h1>
+      <div class="sub">Planner, Coder, Tester and Reviewer work on your task. You approve or send it back.</div>
+    </div>
+    <div class="sub" id="providerBadge"></div>
+  </header>
+
+  <div class="card hidden" id="accessCard">
+    <h2>Access code</h2>
+    <div class="row"><input type="password" id="accessCode" placeholder="Enter the access code for this server" autocomplete="off"><button id="saveAccess">Save</button></div>
+  </div>
+
+  <div class="card" id="taskCard">
+    <h2>Task</h2>
+    <textarea id="task" maxlength="2000" placeholder="Describe the function or class you want, including edge cases and constraints."></textarea>
+    <div class="row" style="margin-top:10px" id="examples"></div>
+    <details class="d" style="margin-top:12px">
+      <summary>Loop limits</summary>
+      <div class="row" style="margin-top:8px">
+        <label class="small">Critique rounds per attempt <input type="number" id="rounds" min="1" max="5" value="3"></label>
+        <label class="small">Max supervisor steps <input type="number" id="steps" min="1" max="5" value="3"></label>
+      </div>
+      <div class="hint" style="margin-top:6px">Each attempt is bounded by the rounds limit. Steps bound how many fresh attempts the supervisor may start.</div>
+    </details>
+    <div class="row end" style="margin-top:14px"><button class="primary" id="run">Run agents</button></div>
+    <div class="banner bad hidden" id="startError" style="margin:12px 0 0"></div>
+  </div>
+
+  <div class="card hidden" id="liveCard">
+    <h2>Live activity</h2>
+    <div class="pipeline" id="pipeline"></div>
+    <div class="status" id="status"><div class="spinner"></div><span id="statusText">Starting…</span></div>
+    <ul class="timeline" id="timeline"></ul>
+  </div>
+
+  <div class="card hidden" id="checkpointCard">
+    <h2>Your review</h2>
+    <div class="kv" id="cpMeta"></div>
+    <div class="banner warn hidden" id="cpNotPassing">The tests are still failing. The agents hit their limits and are handing this to you as their best attempt.</div>
+    <div class="hint">Code</div><pre id="cpCode"></pre>
+    <div class="row" style="margin:8px 0 14px"><button id="copyCp">Copy code</button></div>
+    <div class="hint">Test output</div><pre id="cpTests"></pre>
+    <div class="hint" style="margin-top:12px">Reviewer's verdict</div><div id="cpReview" class="msg" style="margin-top:4px"></div>
+    <details class="d" id="cpHistoryWrap"><summary>Critique history</summary><div id="cpHistory"></div></details>
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+    <div class="row"><button class="good" id="approve">Approve</button><button class="danger" id="rejectToggle">Reject with feedback…</button></div>
+    <div id="rejectBox" class="hidden" style="margin-top:12px">
+      <textarea id="feedback" maxlength="1000" placeholder="What should change? For example: also make it thread-safe."></textarea>
+      <div class="banner warn hidden" id="noStepsWarn" style="margin-top:10px">No retry steps are left, so a rejection would end the run without a revision. Grant extra steps to let the Coder revise.
+        <label class="small" style="margin-top:6px">Extra steps <input type="number" id="extraSteps" min="0" max="5" value="1"></label></div>
+      <div class="row end" style="margin-top:10px"><button id="rejectCancel">Cancel</button><button class="danger" id="rejectSend">Send feedback to Coder</button></div>
+    </div>
+    <div class="banner bad hidden" id="decideError" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card hidden" id="resultCard">
+    <h2>Final result</h2>
+    <div class="banner warn hidden" id="unapplied"><b>Your rejection was not applied.</b> The step limit was reached, so this code is unchanged from what you rejected.</div>
+    <div class="kv" id="resMeta"></div>
+    <pre id="resCode"></pre>
+    <div class="row" style="margin-top:10px"><button id="copyRes">Copy code</button><button id="download">Download solution.py</button><button class="primary" id="again">New task</button></div>
+  </div>
+
+  <div class="card hidden" id="errorCard">
+    <h2>Something went wrong</h2>
+    <div class="banner bad" id="errorText"></div>
+    <div class="row"><button class="primary" id="errAgain">Start over</button></div>
+  </div>
+
+  <footer>Generated code is executed in a lightweight local sandbox on the server. Review it before you use it.</footer>
+</div>
+
+<script src="config.js"></script>
+<script>
+"use strict";
+const API = ((window.APP_CONFIG || {}).apiBase || "").replace(/\/$/, "");
+const EXAMPLES = {
+  "LRU cache": "Implement a class LRUCache with __init__(capacity), get(key) returning -1 if missing, and put(key, value). Both get and put must run in O(1) time, evicting the least recently used entry when capacity is exceeded. Updating an existing key must refresh its recency. Capacity of 0 must never store anything. Use only the standard library.",
+  "Expression evaluator": "Write a function evaluate(expr: str) -> float that evaluates arithmetic expressions with +, -, *, /, parentheses, unary minus, and decimal numbers, respecting operator precedence. Do not use eval() or ast. Raise ZeroDivisionError on division by zero and ValueError on malformed input such as unbalanced parentheses or two operators in a row.",
+  "Task scheduler": "Write a function schedule(tasks: dict[str, list[str]]) -> list[str] where each key is a task and its value is the list of tasks it depends on. Return a valid execution order in which every task appears after its dependencies. If several orders are valid, return the alphabetically smallest one. Raise ValueError naming the tasks involved if there is a dependency cycle, and also if a task depends on one that is not a key."
+};
+const AGENTS = { planner: "Planner", coder: "Coder", tester: "Tester", reviewer: "Reviewer", supervisor: "Supervisor", human: "You" };
+const COLORS = { planner: "--planner", coder: "--coder", tester: "--tester", reviewer: "--reviewer", supervisor: "--supervisor", human: "--human", system: "--system" };
+
+const $ = (id) => document.getElementById(id);
+function h(tag, props, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (k === "class") node.className = v; else node.setAttribute(k, v);
+  }
+  for (const kid of kids) if (kid != null) node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return node;
+}
+const show = (id, on = true) => $(id).classList.toggle("hidden", !on);
+
+let sid = null, since = 0, timer = null, attempt = 0, attemptHeaderShown = false, startedAt = 0, lastCheckpoint = null, lastCode = "";
+let accessCode = sessionStorage.getItem("accessCode") || "";
+
+async function api(path, opts = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (accessCode) headers["X-Access-Code"] = accessCode;
+  const res = await fetch(API + path, { ...opts, headers });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { const j = await res.json(); detail = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail); } catch (_) {}
+    const err = new Error(detail); err.status = res.status; throw err;
+  }
+  return res.json();
+}
+
+function buildPipeline() {
+  const p = $("pipeline"); p.replaceChildren();
+  for (const key of ["planner", "coder", "tester", "reviewer", "supervisor"]) {
+    const dot = h("span", { class: "dot" }); dot.style.background = `var(${COLORS[key]})`;
+    p.append(h("span", { class: "node", "data-agent": key }, dot, AGENTS[key]));
+  }
+}
+function setActive(agent) {
+  document.querySelectorAll(".node").forEach((n) => n.classList.toggle("active", n.dataset.agent === agent));
+}
+
+function whoCell(agent) {
+  const dot = h("span", { class: "dot" }); dot.style.background = `var(${COLORS[agent] || "--system"})`;
+  return h("div", { class: "who" }, dot, AGENTS[agent] || "System");
+}
+function tag(kind, text) { return h("span", { class: "tag " + kind }, text); }
+
+function ensureAttemptHeader() {
+  if (attemptHeaderShown) return;
+  attempt += 1; attemptHeaderShown = true;
+  $("timeline").append(h("li", { class: "attempt" }, `Attempt ${attempt}`));
+}
+
+function renderEvent(e) {
+  const tl = $("timeline");
+  let agent = e.agent, body = null;
+  if (e.agent === "system") {
+    return;
+  } else if (e.agent === "supervisor") {
+    if (e.decision === "planner") { body = h("div", {}, tag("info", "plan ready"), "Task broken into steps."); setActive("coder"); }
+    else if (e.decision === "critique_loop") {
+      body = h("div", {}, tag(e.critique_outcome === "approve" ? "ok" : "bad", "attempt finished"),
+        `${e.critique_rounds_used} round(s), reviewer said ${e.critique_outcome}.`);
+      attemptHeaderShown = false;
+    } else if (e.decision === "test_gate") {
+      body = h("div", {}, tag(e.passed ? "ok" : "bad", e.passed ? "tests passed" : "tests failing"),
+        e.passed ? "Handing over for your review." : "Checking whether another attempt is allowed.");
+    } else if (e.decision === "human_checkpoint") { agent = "human"; body = h("div", {}, tag("info", e.human_decision), e.reason || ""); }
+  } else if (e.agent === "coder") {
+    ensureAttemptHeader(); setActive("tester");
+    body = h("div", {}, tag("info", `round ${e.round}`), e.event === "revised_code" ? "Revised the code." : "Wrote the first version.");
+    if (e.reason && e.event === "revised_code") body.append(h("div", { class: "detail" }, "Because: " + e.reason.slice(0, 300)));
+    if (e.diff && e.event === "revised_code") body.append(h("details", { class: "d" }, h("summary", {}, "What changed"), h("pre", {}, e.diff)));
+  } else if (e.agent === "tester") {
+    ensureAttemptHeader(); setActive("reviewer");
+    body = h("div", {}, tag(e.passed ? "ok" : "bad", e.passed ? "passed" : "failed"), `round ${e.round}, exit code ${e.exit_code}`);
+    if (!e.passed && e.stderr_excerpt) body.append(h("details", { class: "d" }, h("summary", {}, "Error output"), h("pre", {}, e.stderr_excerpt)));
+  } else if (e.agent === "reviewer") {
+    ensureAttemptHeader(); setActive("supervisor");
+    body = h("div", {}, tag(e.verdict === "approve" ? "ok" : "bad", e.verdict === "approve" ? "approved" : "sent back"), `round ${e.round}`);
+    if (e.reason) body.append(h("div", { class: "detail" }, e.reason.slice(0, 500)));
+  }
+  if (!body) return;
+  tl.append(h("li", { class: "ev" }, whoCell(agent), h("div", { class: "msg" }, body)));
+}
+
+function fmtElapsed() { const s = Math.floor((Date.now() - startedAt) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+
+function showCheckpoint(cp) {
+  lastCheckpoint = cp; lastCode = cp.code;
+  setActive(null);
+  $("cpMeta").replaceChildren(
+    h("div", {}, h("b", {}, "Attempt"), `${cp.supervisor_step} of ${cp.supervisor_max_steps}`),
+    h("div", {}, h("b", {}, "Retry steps left"), String(cp.steps_remaining)),
+    h("div", {}, h("b", {}, "Tests"), cp.test_result.passed ? "passing" : "failing"),
+    h("div", {}, h("b", {}, "Reviewer"), cp.review_verdict === "approve" ? "approved" : "not satisfied"));
+  show("cpNotPassing", !cp.test_result.passed);
+  $("cpCode").textContent = cp.code;
+  const t = cp.test_result;
+  $("cpTests").textContent = `exit code ${t.exit_code}\n\n--- stdout ---\n${t.stdout || "(empty)"}\n--- stderr ---\n${t.stderr || "(empty)"}`;
+  $("cpReview").replaceChildren(document.createTextNode(cp.review_feedback || "(no comment)"));
+  const hist = $("cpHistory"); hist.replaceChildren();
+  (cp.critique_history || []).forEach((r) => hist.append(h("div", { class: "detail", style: "margin:6px 0" }, tag(r.verdict === "approve" ? "ok" : "bad", `round ${r.round_number}`), r.reviewer_feedback)));
+  show("cpHistoryWrap", (cp.critique_history || []).length > 0);
+  show("noStepsWarn", cp.steps_remaining <= 0);
+  $("extraSteps").value = cp.steps_remaining <= 0 ? 1 : 0;
+  show("rejectBox", false); show("decideError", false);
+  $("approve").disabled = false; $("rejectSend").disabled = false;
+  $("feedback").value = "";
+  show("checkpointCard");
+  $("status").classList.add("hidden");
+}
+
+function showResult(r) {
+  show("checkpointCard", false); show("liveCard", true); setActive(null);
+  $("status").classList.add("hidden");
+  lastCode = r.code || "";
+  show("unapplied", r.rejection_unapplied);
+  $("resMeta").replaceChildren(
+    h("div", {}, h("b", {}, "Your decision"), r.human_decision || "none"),
+    h("div", {}, h("b", {}, "Attempts used"), String(r.supervisor_steps)),
+    h("div", {}, h("b", {}, "Tests"), r.test_passed ? "passing" : "failing"));
+  $("resCode").textContent = lastCode;
+  show("resultCard");
+}
+
+function showError(msg) {
+  stopPolling(); show("errorCard"); $("errorText").textContent = msg; $("status").classList.add("hidden");
+}
+
+function stopPolling() { if (timer) clearInterval(timer); timer = null; }
+
+async function poll() {
+  try {
+    const s = await api(`/api/sessions/${sid}?since=${since}`);
+    s.events.forEach(renderEvent);
+    since = s.next;
+    if (s.status === "running") {
+      show("status"); $("statusText").textContent = `Agents are working… ${fmtElapsed()}`;
+    } else if (s.status === "awaiting_human") {
+      stopPolling(); showCheckpoint(s.checkpoint);
+    } else if (s.status === "done") {
+      stopPolling(); showResult(s.result);
+    } else if (s.status === "error") {
+      showError(s.error || "Unknown error");
+    }
+  } catch (err) {
+    if (err.status === 404) { stopPolling(); localStorage.removeItem("sid"); resetToStart(); }
+    else if (err.status === 401) { stopPolling(); show("accessCard"); showStartError("Access code needed or incorrect."); resetToStart(); }
+    else { $("statusText").textContent = "Lost connection, retrying…"; }
+  }
+}
+
+function beginPolling() {
+  startedAt = startedAt || Date.now();
+  stopPolling(); timer = setInterval(poll, 1000); poll();
+}
+
+function showStartError(msg) { const b = $("startError"); b.textContent = msg; b.classList.toggle("hidden", !msg); }
+
+function resetToStart() {
+  stopPolling(); sid = null; since = 0; attempt = 0; attemptHeaderShown = false; startedAt = 0;
+  history.replaceState(null, "", location.pathname);
+  ["liveCard", "checkpointCard", "resultCard", "errorCard"].forEach((id) => show(id, false));
+  show("taskCard"); $("run").disabled = false;
+}
+
+async function startRun() {
+  const task = $("task").value.trim();
+  if (!task) { showStartError("Describe a task first."); return; }
+  showStartError(""); $("run").disabled = true;
+  try {
+    const r = await api("/api/sessions", { method: "POST", body: JSON.stringify({
+      task, critique_max_rounds: Number($("rounds").value) || 3, supervisor_max_steps: Number($("steps").value) || 3 }) });
+    sid = r.id; since = 0; attempt = 0; attemptHeaderShown = false; startedAt = Date.now();
+    history.replaceState(null, "", "#s=" + sid);
+    $("timeline").replaceChildren(); buildPipeline(); setActive("planner");
+    show("taskCard", false); show("liveCard"); show("status"); $("statusText").textContent = "Planning…";
+    beginPolling();
+  } catch (err) {
+    $("run").disabled = false;
+    if (err.status === 401) show("accessCard");
+    showStartError(err.status === 429 ? "The server is busy with other runs. Try again in a minute." : err.message);
+  }
+}
+
+async function decide(decision) {
+  show("decideError", false);
+  const body = { decision };
+  if (decision === "reject") {
+    const fb = $("feedback").value.trim();
+    if (!fb) { $("decideError").textContent = "Say what should change."; show("decideError"); return; }
+    body.feedback = fb; body.extra_steps = Number($("extraSteps").value) || 0;
+  }
+  $("approve").disabled = true; $("rejectSend").disabled = true;
+  try {
+    await api(`/api/sessions/${sid}/decision`, { method: "POST", body: JSON.stringify(body) });
+    show("checkpointCard", false); show("status"); $("statusText").textContent = decision === "approve" ? "Finalizing…" : "Agents are revising…";
+    beginPolling();
+  } catch (err) {
+    $("approve").disabled = false; $("rejectSend").disabled = false;
+    $("decideError").textContent = err.message; show("decideError");
+  }
+}
+
+async function copy(text, btn) {
+  try { await navigator.clipboard.writeText(text); const old = btn.textContent; btn.textContent = "Copied"; setTimeout(() => (btn.textContent = old), 1200); } catch (_) {}
+}
+
+function init() {
+  const ex = $("examples");
+  ex.append(h("span", { class: "hint" }, "Try:"));
+  Object.entries(EXAMPLES).forEach(([name, text]) => {
+    const c = h("button", { class: "chip", type: "button" }, name);
+    c.addEventListener("click", () => { $("task").value = text; $("task").focus(); });
+    ex.append(c);
+  });
+  $("run").addEventListener("click", startRun);
+  $("approve").addEventListener("click", () => decide("approve"));
+  $("rejectToggle").addEventListener("click", () => { show("rejectBox"); $("feedback").focus(); });
+  $("rejectCancel").addEventListener("click", () => show("rejectBox", false));
+  $("rejectSend").addEventListener("click", () => decide("reject"));
+  $("copyCp").addEventListener("click", (e) => copy(lastCode, e.target));
+  $("copyRes").addEventListener("click", (e) => copy(lastCode, e.target));
+  $("download").addEventListener("click", () => {
+    const a = h("a", { href: URL.createObjectURL(new Blob([lastCode], { type: "text/x-python" })), download: "solution.py" });
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+  $("again").addEventListener("click", resetToStart);
+  $("errAgain").addEventListener("click", resetToStart);
+  $("saveAccess").addEventListener("click", () => {
+    accessCode = $("accessCode").value.trim(); sessionStorage.setItem("accessCode", accessCode); showStartError("");
+  });
+
+  api("/api/health").then((hh) => {
+    $("providerBadge").textContent = "Model provider: " + hh.provider;
+    if (hh.access_code_required && !accessCode) show("accessCard");
+  }).catch(() => showStartError("Cannot reach the API server. Check that it is running and that config.js points to it."));
+
+  const m = location.hash.match(/s=([a-f0-9]+)/);
+  if (m) {
+    sid = m[1]; buildPipeline(); show("taskCard", false); show("liveCard");
+    api(`/api/sessions/${sid}?since=0`).then(() => { since = 0; startedAt = Date.now(); beginPolling(); }).catch(resetToStart);
+  }
+}
+init();
+</script>
+</body>
+</html>

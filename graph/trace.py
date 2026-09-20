@@ -3,9 +3,20 @@ the supervisor graph, so every iteration at both levels records not just
 that it happened, but what changed and why."""
 from __future__ import annotations
 
+import contextvars
 import difflib
 import time
-from typing import Any
+from typing import Any, Callable
+
+# Optional per-run hook that receives each event the moment it is logged, so a
+# UI can stream progress. A context variable keeps concurrent runs separate.
+_event_listener: contextvars.ContextVar[Callable[[dict], None] | None] = contextvars.ContextVar(
+    "trace_event_listener", default=None
+)
+
+
+def set_event_listener(listener: Callable[[dict], None] | None) -> None:
+    _event_listener.set(listener)
 
 
 def log_event(agent: str, **fields: Any) -> dict:
@@ -13,7 +24,11 @@ def log_event(agent: str, **fields: Any) -> dict:
     agent/graph-level actor produced it; remaining fields are event-specific
     (e.g. `decision=...` for supervisor routing, `event=...` + `reason=...`
     + `diff=...` for an agent's actual work)."""
-    return {"timestamp": time.time(), "agent": agent, **fields}
+    event = {"timestamp": time.time(), "agent": agent, **fields}
+    listener = _event_listener.get()
+    if listener is not None:
+        listener(event)
+    return event
 
 
 def diff_summary(old_code: str | None, new_code: str, context_lines: int = 2, max_lines: int = 40) -> str:

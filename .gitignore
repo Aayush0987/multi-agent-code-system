@@ -20,3 +20,6 @@ logs/*.json
 # Test / tool caches
 .pytest_cache/
 
+
+# UI smoke-test screenshots
+ui_shots/
