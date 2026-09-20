@@ -1,0 +1,21 @@
+# Render Blueprint: deploys the API from the Dockerfile on the free plan.
+# Secrets marked `sync: false` are entered once in the Render dashboard, never stored in git.
+services:
+  - type: web
+    name: multi-agent-code-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: LLM_MODEL
+        value: gemini-flash-lite-latest
+      - key: MAX_ACTIVE_SESSIONS
+        value: "2"
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: ACCESS_CODE
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
