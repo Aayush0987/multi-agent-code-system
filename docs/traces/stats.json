@@ -1,0 +1,83 @@
+[
+  {
+    "name": "easy",
+    "task": "Write a function `is_even(n: int) -> bool` that returns True if n is even.",
+    "supervisor_steps": 1,
+    "critique_rounds_per_step": [
+      1
+    ],
+    "human_decision": "approve",
+    "wall_seconds": 6.4,
+    "timing_by_agent": {
+      "supervisor": 0.004,
+      "coder": 2.115,
+      "tester": 0.058,
+      "reviewer": 1.748
+    }
+  },
+  {
+    "name": "medium",
+    "task": "Write a function `merge_intervals(intervals: list[list[int]]) -> list[list[int]]` that merges all overlapping intervals and returns the merged list, sorted by start.",
+    "supervisor_steps": 1,
+    "critique_rounds_per_step": [
+      1
+    ],
+    "human_decision": "approve",
+    "wall_seconds": 9.5,
+    "timing_by_agent": {
+      "supervisor": 0.004,
+      "coder": 3.174,
+      "tester": 0.042,
+      "reviewer": 2.02
+    }
+  },
+  {
+    "name": "hard",
+    "task": "Write a function `next_greater_circular(nums: list[int]) -> list[int]` that, treating `nums` as circular (wrapping around once), returns a list where each element is replaced by the next greater element found by scanning forward (wrapping around the end back to the start once); use -1 if none exists.",
+    "supervisor_steps": 1,
+    "critique_rounds_per_step": [
+      1
+    ],
+    "human_decision": "approve",
+    "wall_seconds": 10.7,
+    "timing_by_agent": {
+      "supervisor": 0.003,
+      "coder": 4.795,
+      "tester": 0.043,
+      "reviewer": 2.17
+    }
+  },
+  {
+    "name": "multi_round",
+    "task": "Write a function `count_vowels(s: str) -> int` that counts vowels (a, e, i, o, u) case-insensitively.",
+    "supervisor_steps": 1,
+    "critique_rounds_per_step": [
+      3
+    ],
+    "human_decision": "approve",
+    "wall_seconds": 16.9,
+    "timing_by_agent": {
+      "supervisor": 0.004,
+      "coder": 7.374,
+      "tester": 0.081,
+      "reviewer": 6.466
+    }
+  },
+  {
+    "name": "human_rejection",
+    "task": "Write a function `square(n: int) -> int` that returns n squared.",
+    "supervisor_steps": 2,
+    "critique_rounds_per_step": [
+      1,
+      1
+    ],
+    "human_decision": "approve",
+    "wall_seconds": 22.9,
+    "timing_by_agent": {
+      "supervisor": 0.008,
+      "coder": 6.729,
+      "tester": 0.087,
+      "reviewer": 3.396
+    }
+  }
+]
