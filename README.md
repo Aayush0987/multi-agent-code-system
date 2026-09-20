@@ -81,10 +81,15 @@ The frontend is a static page in [`web/`](web/) with no build step. The API is a
 
 ### Deploying
 
-Vercel's serverless functions can't host the backend. Runs last minutes, sessions live in process memory, and the Tester spawns subprocesses. So split it:
+Vercel's serverless functions can't host the backend. Runs last minutes, sessions live in process memory, and the Tester spawns subprocesses. So split it: the frontend goes on Vercel and the backend on a host that runs a long-lived container. Render has a free plan that runs the included [`Dockerfile`](Dockerfile) (it sleeps after 15 idle minutes, and a sleeping service loses in-memory sessions).
 
-1. **Backend** on a host that runs a long-lived container (Render, Railway, Fly.io), using the included [`Dockerfile`](Dockerfile). Set these environment variables: `LLM_PROVIDER`, the matching API key, `ACCESS_CODE`, and `CORS_ORIGINS` (your Vercel URL). Run a single instance, because sessions are in memory. The Dockerfile has not been built or run in the environment this project was developed in.
-2. **Frontend** on Vercel: import the repo, set the **Root Directory** to `web`, framework preset "Other", no build command. Before deploying, set `apiBase` in [`web/config.js`](web/config.js) to the backend URL.
+Do the steps in this order, because each URL is needed by the next step:
+
+1. **Vercel (frontend).** Import this repo, set **Root Directory** to `web`, framework preset "Other", no build command. Note the resulting URL.
+2. **Render (backend).** New, then Blueprint, pick this repo. [`render.yaml`](render.yaml) defines the service. Render asks for three values: `GOOGLE_API_KEY` (your model key), `ACCESS_CODE` (a long random string you generate, for example `python -c "import secrets; print(secrets.token_urlsafe(18))"`), and `CORS_ORIGINS` (the Vercel URL from step 1, no trailing slash). Note the Render URL.
+3. **Point the frontend at the backend.** Set `apiBase` in [`web/config.js`](web/config.js) to the Render URL, commit and push. Vercel redeploys.
+
+The Dockerfile and Blueprint have not been built or deployed from the environment this project was developed in, so expect to fix small things on the first deploy.
 
 **Before you make a public deployment, read this.** The server executes code an LLM wrote, and anyone who can reach it can steer what gets written. The sandbox is a plain subprocess (see Limitations), not a security boundary. Anyone using it also spends your model API quota. Set `ACCESS_CODE` so only people you share it with can start runs, and `MAX_ACTIVE_SESSIONS` to cap concurrency. The container is your isolation layer, so don't run this on a machine that holds anything you care about.
 
