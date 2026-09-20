@@ -144,3 +144,35 @@ def test_live_supervisor_end_to_end():
     final_state = session.resume(decision="approve")
     assert not SupervisorSession.is_paused(final_state)
     assert final_state["human_decision"] == "approve"
+
+
+def test_reject_without_steps_left_is_flagged_as_unapplied(monkeypatch):
+    _patch_planner(monkeypatch)
+    _patch_critique_loop(monkeypatch, [_canned_sub_result(passed=True)])
+
+    session, state = run_supervisor(task="dummy task", supervisor_max_steps=1)
+    assert SupervisorSession.interrupt_payload(state)["steps_remaining"] == 0
+
+    final_state = session.resume(decision="reject", feedback="make it faster")
+    assert not SupervisorSession.is_paused(final_state)
+    assert final_state["rejection_unapplied"] is True
+    assert final_state["supervisor_step"] == 1
+
+
+def test_reject_with_extra_steps_grants_a_retry(monkeypatch):
+    _patch_planner(monkeypatch)
+    _patch_critique_loop(
+        monkeypatch,
+        [_canned_sub_result(passed=True), _canned_sub_result(passed=True)],
+    )
+
+    session, state = run_supervisor(task="dummy task", supervisor_max_steps=1)
+
+    state2 = session.resume(decision="reject", feedback="make it faster", extra_steps=1)
+    assert SupervisorSession.is_paused(state2)
+    payload = SupervisorSession.interrupt_payload(state2)
+    assert payload["supervisor_step"] == 2
+    assert payload["supervisor_max_steps"] == 2
+
+    final_state = session.resume(decision="approve")
+    assert final_state["rejection_unapplied"] is False

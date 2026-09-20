@@ -48,6 +48,8 @@ class AgentState(TypedDict, total=False):
     # Human-in-the-loop
     human_decision: Literal["approve", "reject"]
     human_feedback: str
+    # True when the human rejected but no retry budget remained, so the run ended unchanged
+    rejection_unapplied: bool
 
     # Trace / observability
     trace: list[dict]

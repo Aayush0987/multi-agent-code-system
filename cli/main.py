@@ -21,6 +21,7 @@ def _present_checkpoint(payload: dict) -> None:
     console.print(
         f"Supervisor step [bold]{payload['supervisor_step']}[/bold]"
         f" / {payload['supervisor_max_steps']}"
+        f" ({payload['steps_remaining']} retry step(s) left)"
     )
 
     console.print(Panel(Syntax(payload["code"], "python", theme="ansi_dark"), title="Final Code"))
@@ -47,14 +48,22 @@ def _present_checkpoint(payload: dict) -> None:
     ))
 
 
-def _prompt_decision() -> tuple[str, str | None]:
+def _prompt_decision(steps_remaining: int) -> tuple[str, str | None, int]:
     while True:
         raw = console.input("\n[bold]Approve or reject?[/bold] (a/r): ").strip().lower()
         if raw in ("a", "approve"):
-            return "approve", None
+            return "approve", None, 0
         if raw in ("r", "reject"):
             feedback = console.input("Feedback for the Coder: ").strip()
-            return "reject", feedback
+            extra_steps = 0
+            if steps_remaining <= 0:
+                console.print(
+                    "[yellow]No retry steps are left, so a rejection would end the run "
+                    "without a revision.[/yellow]"
+                )
+                answer = console.input("Extra steps to grant so the Coder can revise (0 to end anyway): ").strip()
+                extra_steps = int(answer) if answer.isdigit() else 0
+            return "reject", feedback, extra_steps
         console.print("[yellow]Please type 'a' (approve) or 'r' (reject).[/yellow]")
 
 
@@ -71,12 +80,17 @@ def main() -> None:
     while SupervisorSession.is_paused(state):
         payload = SupervisorSession.interrupt_payload(state)
         _present_checkpoint(payload)
-        decision, feedback = _prompt_decision()
-        state = session.resume(decision=decision, feedback=feedback)
+        decision, feedback, extra_steps = _prompt_decision(payload["steps_remaining"])
+        state = session.resume(decision=decision, feedback=feedback, extra_steps=extra_steps)
 
     console.rule("[bold green]Done[/bold green]")
     console.print(f"Final human decision: [bold]{state['human_decision']}[/bold]")
     console.print(f"Total supervisor steps used: {state['supervisor_step']}")
+    if state.get("rejection_unapplied"):
+        console.print(
+            "[bold yellow]Your rejection was NOT applied:[/bold yellow] the step limit was reached, "
+            "so the code below is unchanged from what you rejected."
+        )
     console.print(Panel(Syntax(state["code"], "python", theme="ansi_dark"), title="Delivered Code"))
 
     log_path = save_run_log(session.thread_id, state, task)

@@ -26,7 +26,7 @@ DEFAULT_MAX_ROUNDS = 3
 def coder_node(state: AgentState) -> dict:
     feedback = state.get("review_feedback")
     previous_code = state.get("code")
-    code = write_code(state["plan"], feedback=feedback)
+    code = write_code(state["plan"], feedback=feedback, previous_code=previous_code)
 
     round_number = state.get("critique_round", 0) + 1
     trace = list(state.get("trace", []))

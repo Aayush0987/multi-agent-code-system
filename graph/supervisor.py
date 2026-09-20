@@ -61,6 +61,9 @@ def critique_loop_node(state: AgentState) -> dict:
     # the first Coder call of this new attempt, if this is a retry.
     if state.get("review_feedback"):
         sub_input["review_feedback"] = state["review_feedback"]
+    # ...and the code itself, so the Coder edits it rather than rewriting blind.
+    if state.get("code"):
+        sub_input["code"] = state["code"]
 
     sub_result = _critique_loop_graph.invoke(
         sub_input,
@@ -118,7 +121,9 @@ def human_checkpoint_node(state: AgentState) -> dict:
     """Pause the graph and present the final artifact to a human.
 
     Expects the resume value (from `Command(resume=...)`) to be a dict of
-    shape {"decision": "approve" | "reject", "feedback": str | None}.
+    shape {"decision": "approve" | "reject", "feedback": str | None,
+    "extra_steps": int}. `extra_steps` lets a rejecting human grant more
+    supervisor steps when the budget is already used up.
     """
     payload = {
         "code": state["code"],
@@ -128,6 +133,8 @@ def human_checkpoint_node(state: AgentState) -> dict:
         "critique_history": state["critique_history"],
         "supervisor_step": state["supervisor_step"],
         "supervisor_max_steps": state.get("supervisor_max_steps", DEFAULT_SUPERVISOR_MAX_STEPS),
+        "steps_remaining": state.get("supervisor_max_steps", DEFAULT_SUPERVISOR_MAX_STEPS)
+        - state["supervisor_step"],
     }
     decision = interrupt(payload)
 
@@ -148,6 +155,15 @@ def human_checkpoint_node(state: AgentState) -> dict:
         # Fold human feedback into the same channel the Coder reads for
         # revisions, same as a failed-test retry does.
         result["review_feedback"] = feedback
+
+        max_steps = state.get("supervisor_max_steps", DEFAULT_SUPERVISOR_MAX_STEPS)
+        extra = max(0, int(decision.get("extra_steps") or 0))
+        if extra:
+            max_steps += extra
+            result["supervisor_max_steps"] = max_steps
+        result["rejection_unapplied"] = state["supervisor_step"] >= max_steps
+    else:
+        result["rejection_unapplied"] = False
     return result
 
 
@@ -223,9 +239,14 @@ class SupervisorSession:
         }
         return self.graph.invoke(initial_state, config=self._config)
 
-    def resume(self, decision: Literal["approve", "reject"], feedback: str | None = None) -> AgentState:
+    def resume(
+        self,
+        decision: Literal["approve", "reject"],
+        feedback: str | None = None,
+        extra_steps: int = 0,
+    ) -> AgentState:
         return self.graph.invoke(
-            Command(resume={"decision": decision, "feedback": feedback}),
+            Command(resume={"decision": decision, "feedback": feedback, "extra_steps": extra_steps}),
             config=self._config,
         )
 

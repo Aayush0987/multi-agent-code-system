@@ -20,7 +20,7 @@ def _patch_agents(monkeypatch, coder_outputs, verdicts):
     coder_calls = {"n": 0}
     reviewer_calls = {"n": 0}
 
-    def fake_write_code(plan, feedback=None):
+    def fake_write_code(plan, feedback=None, previous_code=None):
         code = coder_outputs[coder_calls["n"]]
         coder_calls["n"] += 1
         return code
@@ -107,3 +107,27 @@ def test_live_critique_loop_end_to_end():
     assert len(result["critique_history"]) == result["critique_round"]
     assert result["review_verdict"] in ("approve", "revise")
     assert "def is_prime" in result["code"]
+
+
+def test_coder_receives_its_previous_code_on_revision(monkeypatch):
+    seen = []
+
+    def fake_write_code(plan, feedback=None, previous_code=None):
+        seen.append({"feedback": feedback, "previous_code": previous_code})
+        return f"code v{len(seen)}"
+
+    verdicts = iter([("revise", "fix it"), ("approve", "ok")])
+    monkeypatch.setattr(critique_loop_module, "write_code", fake_write_code)
+    monkeypatch.setattr(
+        critique_loop_module, "run_tests",
+        lambda code, timeout=None: {"passed": True, "stdout": "", "stderr": "", "exit_code": 0},
+    )
+    monkeypatch.setattr(
+        critique_loop_module, "review_code",
+        lambda code, test_result: dict(zip(("verdict", "feedback"), next(verdicts))),
+    )
+
+    run_critique_loop(plan="p", max_rounds=3)
+
+    assert seen[0]["previous_code"] is None
+    assert seen[1] == {"feedback": "fix it", "previous_code": "code v1"}

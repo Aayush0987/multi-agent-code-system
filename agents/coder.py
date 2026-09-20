@@ -37,12 +37,22 @@ def _extract_code(text: str) -> str:
     return text.strip()
 
 
-def write_code(plan: str, feedback: str | None = None) -> str:
-    llm = get_llm(role="coder")
-
+def build_user_content(plan: str, feedback: str | None, previous_code: str | None) -> str:
     user_content = f"Plan:\n{plan}"
+    if previous_code:
+        user_content += f"\n\nYour previous version of the code:\n```python\n{previous_code}\n```"
     if feedback:
-        user_content += f"\n\nFeedback to address (from prior review/test run):\n{feedback}"
+        user_content += (
+            "\n\nFeedback to address (from prior review/test run). Fix these issues by "
+            "editing your previous version, and keep the parts that already work:\n"
+            f"{feedback}"
+        )
+    return user_content
+
+
+def write_code(plan: str, feedback: str | None = None, previous_code: str | None = None) -> str:
+    llm = get_llm(role="coder")
+    user_content = build_user_content(plan, feedback, previous_code)
 
     messages = [
         SystemMessage(content=_SYSTEM_PROMPT),
