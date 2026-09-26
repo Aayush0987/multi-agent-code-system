@@ -112,8 +112,8 @@ after Phase 9.
 - [x] Human checkpoint reports `steps_remaining`, accepts `extra_steps` on reject, and flags `rejection_unapplied`; CLI warns and offers extra steps
 - [x] Web UI: `api/` (FastAPI, background-thread sessions, access code, concurrency cap) + `web/` (static, no build). Live event streaming via a context-var listener in `graph/trace.py`
 - [x] Verified: 31 deterministic tests pass (8 of them API tests with mocked agents); real run through the HTTP API; real Chrome run via `scripts/ui_smoke.py` (run -> reject with feedback -> approve -> download), no console errors
-- [ ] Dockerfile written but not built (Docker not installed on the dev machine)
-- [ ] Not yet deployed to Vercel/backend host
+- [x] Dockerfile built and deployed via Render (free plan)
+- [x] Deployed: frontend on Vercel (https://multi-agent-code-system.vercel.app), backend on Render (https://multi-agent-code-api.onrender.com). CORS_ORIGINS set to both the production Vercel domain and the initial preview deployment URL. Verified live: ran the LRU cache task through the deployed pipeline end-to-end (Planner → Coder → Tester passed → Reviewer approved → human checkpoint).
 
 ## Git / GitHub
 - [x] Local git init
